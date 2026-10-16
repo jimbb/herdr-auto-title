@@ -14,12 +14,15 @@ Every setting Auto Title has is a `HERDR_AUTO_TITLE_*` variable, read in
 environment, or written into a file that is loaded into the environment before
 anything reads it.
 
-One variable read there is not ours. `CLAUDE_CONFIG_DIR` is Claude Code's own,
-and Herdr's server passes it through to the plugin; it is read here so that the
-transcript reader is handed the homes to search rather than going to the
+Three variables read there are not ours. `CLAUDE_CONFIG_DIR` is Claude Code's
+own, and Herdr's server passes it through to the plugin; it is read here so that
+the transcript reader is handed the homes to search rather than going to the
 environment for them, which is what makes the order the file is loaded in stop
-mattering. `CODEX_HOME`, Codex's own, is read for the same reason; unset, it
-means `~/.codex`, as it does to Codex.
+mattering. `CODEX_HOME`, Codex's own, and `GROK_CONFIG_DIR`, Grok Build's, are
+read for the same reason; unset, they mean `~/.codex` and `~/.grok`, as they do
+to the agents. Like ours, each reaches the plugin only through the server's
+environment or `config.env`: one set only in a shell is not seen, and the
+default home is read instead.
 
 ## Why a file exists
 

@@ -11,6 +11,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/codex"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
+	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -25,6 +26,8 @@ type Options struct {
 	Home string
 	// CodexHome is the Codex home rollouts and the session index are found in.
 	CodexHome string
+	// GrokHome is the Grok Build home session summaries are found in.
+	GrokHome string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
@@ -36,6 +39,7 @@ type Reader struct {
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
+	grokTitles        *grok.Reader
 	piTopics          *pi.Reader
 	codexTopics       *codex.Reader
 	log               *slog.Logger
@@ -48,6 +52,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
+		grokTitles:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
 		codexTopics:       codex.NewReader(opts.CodexHome),
 		log:               log,
@@ -66,6 +71,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	// session the snapshot holds without being told which is whose.
 	held := sessionsIn(panes)
 	r.claudeTopics.Retain(held)
+	r.grokTitles.Retain(held)
 	r.piTopics.Retain(held)
 	r.codexTopics.Retain(held)
 
@@ -196,26 +202,8 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		return sessionTopic{}
 	}
 
-	switch pane.AgentSession.Agent {
-	case claude.Agent:
-		sessionID, ok := pane.AgentSession.ID()
-		if !ok {
-			return sessionTopic{}
-		}
-
-		topic := r.claudeTopics.Topic(sessionID, dir)
-
-		return sessionTopic{text: topic.Text(), dir: topic.Dir}
-	case antigravity.Agent:
-		sessionID, ok := pane.AgentSession.ID()
-		if !ok {
-			return sessionTopic{}
-		}
-
-		// An annotation says nothing of where the agent works, so the pane's own
-		// directory keeps the branch.
-		return sessionTopic{text: r.antigravityTitles.Title(sessionID)}
-	case pi.Agent:
+	// Pi's session arrives as a path; every other agent's as an id.
+	if pane.AgentSession.Agent == pi.Agent {
 		path, ok := pane.AgentSession.Path()
 		if !ok {
 			return sessionTopic{}
@@ -224,12 +212,25 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		topic := r.piTopics.Topic(path)
 
 		return sessionTopic{text: topic.Text(), dir: topic.Dir}
-	case codex.Agent:
-		sessionID, ok := pane.AgentSession.ID()
-		if !ok {
-			return sessionTopic{}
-		}
+	}
 
+	sessionID, ok := pane.AgentSession.ID()
+	if !ok {
+		return sessionTopic{}
+	}
+
+	switch pane.AgentSession.Agent {
+	case claude.Agent:
+		topic := r.claudeTopics.Topic(sessionID, dir)
+
+		return sessionTopic{text: topic.Text(), dir: topic.Dir}
+	case antigravity.Agent:
+		// An annotation says nothing of where the agent works, so the pane's own
+		// directory keeps the branch.
+		return sessionTopic{text: r.antigravityTitles.Title(sessionID)}
+	case grok.Agent:
+		return sessionTopic{text: r.grokTitles.Title(sessionID, dir)}
+	case codex.Agent:
 		topic := r.codexTopics.Topic(sessionID)
 		if !r.codexTopics.Shows(pane.TerminalTitle, topic) {
 			return sessionTopic{}

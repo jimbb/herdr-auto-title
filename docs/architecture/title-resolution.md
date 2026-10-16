@@ -79,6 +79,7 @@ rather than by the order the sources happen to be listed in
 | Confidence | Source | File | Contributes |
 |---:|---|---|---|
 | 90 | Agent title | `agent.go` | Activity |
+| 85 | Stable session name | `transcript.go` | Activity |
 | 80 | Terminal title | `terminal.go` | Activity |
 | 75 | Session transcript | `transcript.go` | Activity |
 | 70 | Foreground process | `process.go` | Activity |
@@ -202,6 +203,15 @@ rollout's head and tail, the index whole, `MaxScan` a poll, since a name is
 written to it once and an index past `MaxScan` read from its tail would lose
 every older session's. Codex compresses a rollout to `.jsonl.zst` only once
 it is a week old, which is not a session a pane still holds.
+
+Grok Build is the exception that sits above the terminal title. Its window
+title is the live status line — a braille spinner, the current tool, then the
+session name — so copying it names the tab after whatever tool is running.
+`herdr integration install grok` reports the session id the same way, and the
+name is `generated_title` in `summary.json` under the Grok home
+(`internal/grok/summary.go`). That name outranks the window title. A session
+that has not been named yet still falls through to the status line. The home is
+`GROK_CONFIG_DIR`, else `~/.grok`.
 
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,

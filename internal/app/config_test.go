@@ -41,6 +41,7 @@ func isolate(t *testing.T) {
 		// Claude Code's own variable is cleared with ours: it now decides a
 		// Config field, so a developer's real home would otherwise be read.
 		EnvClaudeDirs, EnvClaudeConfigDir, EnvCodexHome, EnvForeignProcesses,
+		EnvGrokConfigDir,
 	}
 
 	for _, name := range names {
