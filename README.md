@@ -66,6 +66,7 @@ CLI that is nothing but `agy`.
 ```sh
 herdr integration install claude           # Claude Code
 herdr integration install antigravity-cli  # Antigravity CLI
+herdr integration install grok             # Grok Build
 herdr integration install pi               # Pi
 ```
 
@@ -144,6 +145,7 @@ not read.
 | `HERDR_AUTO_TITLE_WORKSPACES`   | `true`                                   | Report what each workspace's active tab is doing as its `topic`    |
 | `HERDR_AUTO_TITLE_WORKSPACE_MAX_LENGTH` | none: Herdr fits it              | Longest topic, in columns                                          |
 | `HERDR_AUTO_TITLE_CLAUDE_DIRS`  | none                                     | Extra Claude config homes to search, `:`-separated                 |
+| `HERDR_AUTO_TITLE_GROK_DIRS`    | none                                     | Extra Grok homes to search, `:`-separated                          |
 
 Turning `HERDR_AUTO_TITLE_TRANSCRIPT` off also drops the branch from a tab whose
 agent is working in a git worktree, because the transcript is what says which

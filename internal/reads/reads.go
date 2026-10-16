@@ -10,6 +10,7 @@ import (
 	"github.com/kryptamine/herdr-auto-title/internal/antigravity"
 	"github.com/kryptamine/herdr-auto-title/internal/claude"
 	"github.com/kryptamine/herdr-auto-title/internal/git"
+	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/herdr"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
@@ -22,6 +23,8 @@ type Options struct {
 	ClaudeDirs []string
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
 	Home string
+	// GrokDirs are the Grok homes session summaries are found in.
+	GrokDirs []string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
@@ -33,6 +36,7 @@ type Reader struct {
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
+	grokTopics        *grok.Reader
 	piTopics          *pi.Reader
 	log               *slog.Logger
 	readBranches      bool
@@ -44,6 +48,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
+		grokTopics:        grok.NewReader(opts.GrokDirs...),
 		piTopics:          pi.NewReader(),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
@@ -61,6 +66,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	// session the snapshot holds without being told which is whose.
 	held := sessionsIn(panes)
 	r.claudeTopics.Retain(held)
+	r.grokTopics.Retain(held)
 	r.piTopics.Retain(held)
 
 	return &Poll{
@@ -107,6 +113,7 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	// the agent is working, and that is where the branch is read from.
 	topic := p.reader.topic(ctx, pane, dir)
 	pane.AgentTopic = topic.text
+	pane.StableTopic = topic.stable
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.dir)
 	pane.AgentDir = topic.dir
@@ -168,10 +175,12 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 }
 
 // sessionTopic is what an agent's own session says it is about, and where the
-// agent works when the session says so.
+// agent works when the session says so. Stable is a name that outranks the
+// terminal title; see docs/architecture/title-resolution.md.
 type sessionTopic struct {
-	text string
-	dir  string
+	text   string
+	dir    string
+	stable bool
 }
 
 // topic reports what the session the pane's agent is holding says it is about.
@@ -204,6 +213,14 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 		// An annotation says nothing of where the agent works, so the pane's own
 		// directory keeps the branch.
 		return sessionTopic{text: r.antigravityTitles.Title(sessionID)}
+	case grok.Agent:
+		sessionID, ok := pane.AgentSession.ID()
+		if !ok {
+			return sessionTopic{}
+		}
+
+		// Grok's window title is the live status line, so the summary outranks it.
+		return sessionTopic{text: r.grokTopics.Topic(sessionID, dir).Text(), stable: true}
 	case pi.Agent:
 		path, ok := pane.AgentSession.Path()
 		if !ok {
