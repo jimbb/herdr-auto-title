@@ -28,10 +28,7 @@ const (
 	ConfidenceProcess       = 70
 	ConfidenceTranscript    = 75
 	ConfidenceTerminalTitle = 80
-	// ConfidenceStableTopic sits above the terminal title. A Grok summary is a
-	// session name; the window title beside it is the live status line.
-	ConfidenceStableTopic = 85
-	ConfidenceAgent       = 90
+	ConfidenceAgent         = 90
 )
 
 // Parts are the components a source contributes to a title, formatted as
@@ -177,7 +174,6 @@ func New(opts Options, sources ...Source) *Deterministic {
 func Default(opts Options) *Deterministic {
 	return New(opts,
 		NewAgent(),
-		NewStableTopic(),
 		NewTerminalTitle(),
 		NewTranscript(),
 		NewProcess(),

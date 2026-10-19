@@ -189,9 +189,8 @@ func TestAGrokSummaryNamesThePane(t *testing.T) {
 
 	readOne(grokOptions(home), pane)
 
-	if pane.AgentTopic != "Fix the login redirect" || !pane.StableTopic {
-		t.Errorf("topic %q stable %v, want the summary to outrank the window title",
-			pane.AgentTopic, pane.StableTopic)
+	if pane.AgentTopic != "Fix the login redirect" {
+		t.Errorf("topic = %q, want the summary's title", pane.AgentTopic)
 	}
 }
 

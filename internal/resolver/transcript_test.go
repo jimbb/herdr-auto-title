@@ -82,25 +82,39 @@ func TestATopicThatNamesTheAgentFallsThrough(t *testing.T) {
 	}
 }
 
-// The Grok case is the one where the session name outranks the window title:
-// that title is the live status line, spinner included.
-func TestAStableTopicOutranksTheTerminalTitle(t *testing.T) {
+func TestAGrokPaneIsNamedBySessionRatherThanStatusLine(t *testing.T) {
 	t.Parallel()
 
+	// Grok's window title is its live status line, so a tab copying it would
+	// follow whatever tool is running.
 	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
 		Dir:           dashboard,
-		TerminalTitle: "Waiting on subagent… - grok",
+		TerminalTitle: "⠋ Waiting on subagent… - grok",
 		Agent:         "grok",
 		AgentStatus:   herdr.AgentStatusWorking,
 		AgentTopic:    "Fix the login redirect",
-		StableTopic:   true,
 	}))
 
 	if want := "dashboard › grok › Fix the login redirect"; got.Name != want {
 		t.Errorf("name = %q, want %q", got.Name, want)
 	}
 
-	if got.Reason != "session" {
-		t.Errorf("reason = %q, want session", got.Reason)
+	if got.Reason != "transcript" {
+		t.Errorf("reason = %q, want transcript", got.Reason)
+	}
+}
+
+func TestAnUnnamedGrokSessionIsNotNamedAfterItsStatusLine(t *testing.T) {
+	t.Parallel()
+
+	got := defaultChain().Resolve(tabWithPane(&state.PaneState{
+		Dir:           dashboard,
+		TerminalTitle: "⠋ Running bash - grok",
+		Agent:         "grok",
+		AgentStatus:   herdr.AgentStatusWorking,
+	}))
+
+	if got.Reason == "terminal_title" {
+		t.Errorf("reason = %q, name = %q, want the status line declined", got.Reason, got.Name)
 	}
 }

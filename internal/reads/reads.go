@@ -113,7 +113,6 @@ func (p *Poll) Fill(ctx context.Context, pane *state.PaneState) {
 	// the agent is working, and that is where the branch is read from.
 	topic := p.reader.topic(ctx, pane, dir)
 	pane.AgentTopic = topic.text
-	pane.StableTopic = topic.stable
 	pane.Git = p.checkout(ctx, dir)
 	pane.AgentGit = p.checkout(ctx, topic.dir)
 	pane.AgentDir = topic.dir
@@ -175,12 +174,10 @@ func (p *Poll) checkout(ctx context.Context, dir string) git.Checkout {
 }
 
 // sessionTopic is what an agent's own session says it is about, and where the
-// agent works when the session says so. Stable is a name that outranks the
-// terminal title; see docs/architecture/title-resolution.md.
+// agent works when the session says so.
 type sessionTopic struct {
-	text   string
-	dir    string
-	stable bool
+	text string
+	dir  string
 }
 
 // topic reports what the session the pane's agent is holding says it is about.
@@ -219,8 +216,7 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 			return sessionTopic{}
 		}
 
-		// Grok's window title is the live status line, so the summary outranks it.
-		return sessionTopic{text: r.grokTopics.Topic(sessionID, dir).Text(), stable: true}
+		return sessionTopic{text: r.grokTopics.Topic(sessionID, dir).Text()}
 	case pi.Agent:
 		path, ok := pane.AgentSession.Path()
 		if !ok {
