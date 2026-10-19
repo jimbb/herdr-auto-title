@@ -17,9 +17,9 @@ func TestAGeneratedTitleNamesTheSession(t *testing.T) {
 
 	home := writeSummary(t, started, "Fix the login redirect")
 
-	got := NewReader(home).Topic(session, started)
-	if got.Text() != "Fix the login redirect" {
-		t.Errorf("title = %q", got.Text())
+	got := NewReader(home).Title(session, started)
+	if got != "Fix the login redirect" {
+		t.Errorf("title = %q", got)
 	}
 }
 
@@ -30,9 +30,9 @@ func TestThePaneDirectoryIsTriedBeforeAScan(t *testing.T) {
 	writeSummaryIn(t, home, "/work/other", "The other one")
 	writeSummaryIn(t, home, started, "This pane")
 
-	got := NewReader(home).Topic(session, started)
-	if got.Text() != "This pane" {
-		t.Errorf("title = %q, want the pane's own project", got.Text())
+	got := NewReader(home).Title(session, started)
+	if got != "This pane" {
+		t.Errorf("title = %q, want the pane's own project", got)
 	}
 }
 
@@ -41,26 +41,17 @@ func TestAMovedSessionIsFoundByScanning(t *testing.T) {
 
 	home := writeSummary(t, "/work/elsewhere", "Still this session")
 
-	got := NewReader(home).Topic(session, started)
-	if got.Text() != "Still this session" {
-		t.Errorf("title = %q", got.Text())
+	got := NewReader(home).Title(session, started)
+	if got != "Still this session" {
+		t.Errorf("title = %q", got)
 	}
 }
 
 func TestAMissingSummaryIsNotTheSession(t *testing.T) {
 	t.Parallel()
 
-	if got := NewReader(t.TempDir()).Topic(session, started); got.Text() != "" {
-		t.Errorf("title = %q, want nothing", got.Text())
-	}
-}
-
-func TestASessionIDThatWalksOutIsRefused(t *testing.T) {
-	t.Parallel()
-
-	home := t.TempDir()
-	if got := NewReader(home).Topic("../secret", started); got.Text() != "" {
-		t.Errorf("title = %q, want the id refused", got.Text())
+	if got := NewReader(t.TempDir()).Title(session, started); got != "" {
+		t.Errorf("title = %q, want nothing", got)
 	}
 }
 
@@ -70,7 +61,7 @@ func TestARewriteReplacesTheTitle(t *testing.T) {
 	home := writeSummary(t, started, "First cut")
 	reader := NewReader(home)
 
-	if got := reader.Topic(session, started).Text(); got != "First cut" {
+	if got := reader.Title(session, started); got != "First cut" {
 		t.Fatalf("title = %q", got)
 	}
 
@@ -78,7 +69,7 @@ func TestARewriteReplacesTheTitle(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	writeSummaryIn(t, home, started, "Renamed")
 
-	if got := reader.Topic(session, started).Text(); got != "Renamed" {
+	if got := reader.Title(session, started); got != "Renamed" {
 		t.Errorf("title = %q, want the rewrite", got)
 	}
 }
@@ -90,7 +81,7 @@ func TestAnUnchangedSummaryIsReadOnce(t *testing.T) {
 	path := summaryPath(home, started, session)
 	reader := NewReader(home)
 
-	reader.Topic(session, started)
+	reader.Title(session, started)
 
 	if err := os.Chmod(path, 0); err != nil {
 		t.Fatal(err)
@@ -98,7 +89,7 @@ func TestAnUnchangedSummaryIsReadOnce(t *testing.T) {
 
 	t.Cleanup(func() { _ = os.Chmod(path, 0o644) })
 
-	if got := reader.Topic(session, started).Text(); got != "Fix the login redirect" {
+	if got := reader.Title(session, started); got != "Fix the login redirect" {
 		t.Errorf("title = %q, want the title kept without re-reading", got)
 	}
 }
@@ -106,8 +97,8 @@ func TestAnUnchangedSummaryIsReadOnce(t *testing.T) {
 func TestNoHomeAnswersNothing(t *testing.T) {
 	t.Parallel()
 
-	if got := NewReader("").Topic(session, started); got.Text() != "" {
-		t.Errorf("title = %q, want nothing", got.Text())
+	if got := NewReader("").Title(session, started); got != "" {
+		t.Errorf("title = %q, want nothing", got)
 	}
 }
 
@@ -116,7 +107,7 @@ func TestRetainForgetsAClosedSession(t *testing.T) {
 
 	home := writeSummary(t, started, "Fix the login redirect")
 	reader := NewReader(home)
-	reader.Topic(session, started)
+	reader.Title(session, started)
 
 	reader.Retain(nil)
 
@@ -124,7 +115,7 @@ func TestRetainForgetsAClosedSession(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := reader.Topic(session, started).Text(); got != "" {
+	if got := reader.Title(session, started); got != "" {
 		t.Errorf("title = %q, want the forgotten session re-found as missing", got)
 	}
 }

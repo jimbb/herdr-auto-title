@@ -36,7 +36,7 @@ type Reader struct {
 	processes         *processCache
 	claudeTopics      *claude.Reader
 	antigravityTitles *antigravity.Reader
-	grokTopics        *grok.Reader
+	grokTitles        *grok.Reader
 	piTopics          *pi.Reader
 	log               *slog.Logger
 	readBranches      bool
@@ -48,7 +48,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
-		grokTopics:        grok.NewReader(opts.GrokHome),
+		grokTitles:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,
@@ -66,7 +66,7 @@ func (r *Reader) Poll(client herdr.Client, panes []herdr.PaneInfo, drew map[stri
 	// session the snapshot holds without being told which is whose.
 	held := sessionsIn(panes)
 	r.claudeTopics.Retain(held)
-	r.grokTopics.Retain(held)
+	r.grokTitles.Retain(held)
 	r.piTopics.Retain(held)
 
 	return &Poll{
@@ -216,7 +216,7 @@ func (r *Reader) topic(ctx context.Context, pane *state.PaneState, dir string) s
 			return sessionTopic{}
 		}
 
-		return sessionTopic{text: r.grokTopics.Topic(sessionID, dir).Text()}
+		return sessionTopic{text: r.grokTitles.Title(sessionID, dir)}
 	case pi.Agent:
 		path, ok := pane.AgentSession.Path()
 		if !ok {

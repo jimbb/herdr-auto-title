@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/kryptamine/herdr-auto-title/internal/transcript"
 )
 
 // Agent is the label Herdr gives Grok Build.
@@ -18,37 +20,19 @@ const Agent = "grok"
 // summaryName is the file Grok rewrites with the session's current title.
 const summaryName = "summary.json"
 
-// locateRetry is how long a session whose summary was not found is left alone.
-// Herdr can name a session before Grok has written the file.
-const locateRetry = 10 * time.Second
-
-// Topic is what a session says it is about.
-type Topic struct {
-	// Title is the name Grok generated, or the one the user set with /rename.
-	Title string
-}
-
-// Text is what the topic contributes to a title.
-func (t Topic) Text() string {
-	return t.Title
-}
-
 // Reader reads session summaries, remembering where each one was found.
 type Reader struct {
-	mu sync.Mutex
-	// roots are the Grok homes a summary is looked for in, in order.
+	mu       sync.Mutex
 	roots    []string
 	sessions map[string]*summary
 	now      func() time.Time
 }
 
-// summary is one session's file and the title last read out of it. A path
-// that is still empty is a session that has been looked for and not found.
+// summary is one session's file and the title last read out of it.
 type summary struct {
-	path       string
-	mod        time.Time
-	topic      Topic
-	searchedAt time.Time
+	search transcript.Search
+	mod    time.Time
+	title  string
 }
 
 // NewReader builds a reader over home, the Grok Build home. An empty home
@@ -66,30 +50,30 @@ func NewReader(home string) *Reader {
 	}
 }
 
-// Topic reports what the session is about. dir is the pane's directory, where
-// the summary is looked for first. See docs/architecture/title-resolution.md.
-func (r *Reader) Topic(sessionID, dir string) Topic {
-	if len(r.roots) == 0 || strings.TrimSpace(sessionID) == "" ||
-		strings.Contains(sessionID, "..") {
-		return Topic{}
+// Title reports the name Grok generated for the session, or the one the user
+// set with /rename. dir is where the summary is looked for first; the id
+// becomes part of a path, so it must be one herdr.AgentSessionInfo.ID accepted.
+func (r *Reader) Title(sessionID, dir string) string {
+	if len(r.roots) == 0 {
+		return ""
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	session, known := r.sessions[sessionID]
+	held, known := r.sessions[sessionID]
 	if !known {
-		session = &summary{}
-		r.sessions[sessionID] = session
+		held = &summary{}
+		r.sessions[sessionID] = held
 	}
 
-	if session.path == "" && !r.find(session, sessionID, dir) {
-		return session.topic
+	if !layout.Find(&held.search, r.roots, sessionID, dir, r.now()) {
+		return held.title
 	}
 
-	r.readInto(session)
+	held.read()
 
-	return session.topic
+	return held.title
 }
 
 // Retain forgets every session but these.
@@ -99,66 +83,23 @@ func (r *Reader) Retain(sessionIDs []string) {
 
 	kept := make(map[string]*summary, len(sessionIDs))
 	for _, id := range sessionIDs {
-		if session, known := r.sessions[id]; known {
-			kept[id] = session
+		if held, known := r.sessions[id]; known {
+			kept[id] = held
 		}
 	}
 
 	r.sessions = kept
 }
 
-func (r *Reader) find(session *summary, sessionID, dir string) bool {
-	now := r.now()
-	if !session.searchedAt.IsZero() && now.Sub(session.searchedAt) < locateRetry {
-		return false
-	}
-
-	session.searchedAt = now
-
-	path, found := r.locate(sessionID, dir)
-	if !found {
-		return false
-	}
-
-	session.path = path
-
-	return true
-}
-
-func (r *Reader) locate(sessionID, dir string) (string, bool) {
-	for _, root := range r.roots {
-		if path, found := locateUnder(root, sessionID, dir); found {
-			return path, true
-		}
-	}
-
-	return "", false
-}
-
-// locateUnder finds the summary in one Grok home. Grok files a session under
-// the directory it was started in, with every separator percent-encoded.
-func locateUnder(root, sessionID, dir string) (string, bool) {
-	sessions := filepath.Join(root, "sessions")
-
-	if dir != "" {
-		candidate := filepath.Join(sessions, slugOf(dir), sessionID, summaryName)
-		if regular(candidate) {
-			return candidate, true
-		}
-	}
-
-	matches, err := filepath.Glob(filepath.Join(sessions, "*", sessionID, summaryName))
-	if err != nil || len(matches) == 0 {
-		return "", false
-	}
-
-	return matches[0], true
-}
-
-func regular(path string) bool {
-	info, err := os.Stat(path)
-
-	return err == nil && info.Mode().IsRegular()
+// layout is where Grok files a session: under the directory it was started in,
+// every separator percent-encoded, else under whichever project it moved to.
+var layout = transcript.Layout{
+	Filed: func(root, dir, sessionID string) string {
+		return filepath.Join(root, "sessions", slugOf(dir), sessionID, summaryName)
+	},
+	Anywhere: func(root, sessionID string) string {
+		return filepath.Join(root, "sessions", "*", sessionID, summaryName)
+	},
 }
 
 // slugOf is how Grok names a project directory: "/" and "\" become %2F.
@@ -166,17 +107,17 @@ func slugOf(dir string) string {
 	return strings.NewReplacer("/", "%2F", "\\", "%2F").Replace(filepath.Clean(dir))
 }
 
-// readInto re-reads a summary whose mtime moved. Grok rewrites the file, so a
-// missing or shorter one is the same session under a new name.
-func (r *Reader) readInto(session *summary) {
-	info, err := os.Stat(session.path)
+// read re-reads a summary whose mtime moved. Grok rewrites the file whole, so
+// it is read whole; one that is gone sends the session back to the search.
+func (s *summary) read() {
+	info, err := os.Stat(s.search.Path)
 	if err != nil {
-		session.path, session.mod = "", time.Time{}
+		s.search.Path, s.mod = "", time.Time{}
 
 		return
 	}
 
-	if !info.ModTime().After(session.mod) && session.topic.Title != "" {
+	if !info.ModTime().After(s.mod) && s.title != "" {
 		return
 	}
 
@@ -186,7 +127,7 @@ func (r *Reader) readInto(session *summary) {
 		Title string `json:"generated_title"`
 	}
 
-	content, err := os.ReadFile(session.path)
+	content, err := os.ReadFile(s.search.Path)
 	if err != nil {
 		return
 	}
@@ -195,6 +136,6 @@ func (r *Reader) readInto(session *summary) {
 		return
 	}
 
-	session.mod = info.ModTime()
-	session.topic.Title = strings.TrimSpace(file.Title)
+	s.mod = info.ModTime()
+	s.title = strings.TrimSpace(file.Title)
 }
