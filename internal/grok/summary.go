@@ -51,11 +51,16 @@ type summary struct {
 	searchedAt time.Time
 }
 
-// NewReader builds a reader over homes, searched in the order given. No home
-// at all answers nothing.
-func NewReader(homes ...string) *Reader {
+// NewReader builds a reader over home, the Grok Build home. An empty home
+// answers nothing.
+func NewReader(home string) *Reader {
+	var roots []string
+	if home != "" {
+		roots = []string{home}
+	}
+
 	return &Reader{
-		roots:    homes,
+		roots:    roots,
 		sessions: make(map[string]*summary),
 		now:      time.Now,
 	}

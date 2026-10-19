@@ -41,10 +41,10 @@ func transcriptOptions(homes ...string) reads.Options {
 	return opts
 }
 
-func grokOptions(homes ...string) reads.Options {
+func grokOptions(home string) reads.Options {
 	opts := branchOptions()
 	opts.ReadSessions = true
-	opts.GrokDirs = homes
+	opts.GrokHome = home
 
 	return opts
 }

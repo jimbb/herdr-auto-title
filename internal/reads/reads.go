@@ -23,8 +23,8 @@ type Options struct {
 	ClaudeDirs []string
 	// Home is the user's home directory, where Antigravity CLI keeps its state.
 	Home string
-	// GrokDirs are the Grok homes session summaries are found in.
-	GrokDirs []string
+	// GrokHome is the Grok Build home session summaries are found in.
+	GrokHome string
 	// BranchMax of zero or less turns branches off, and then no checkout is read.
 	BranchMax    int
 	ReadSessions bool
@@ -48,7 +48,7 @@ func New(opts Options, log *slog.Logger) *Reader {
 		processes:         newProcessCache(),
 		claudeTopics:      claude.NewReader(opts.ClaudeDirs...),
 		antigravityTitles: antigravity.NewReader(opts.Home),
-		grokTopics:        grok.NewReader(opts.GrokDirs...),
+		grokTopics:        grok.NewReader(opts.GrokHome),
 		piTopics:          pi.NewReader(),
 		log:               log,
 		readBranches:      opts.BranchMax > 0,

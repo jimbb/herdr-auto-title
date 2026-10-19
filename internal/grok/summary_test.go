@@ -106,7 +106,7 @@ func TestAnUnchangedSummaryIsReadOnce(t *testing.T) {
 func TestNoHomeAnswersNothing(t *testing.T) {
 	t.Parallel()
 
-	if got := NewReader().Topic(session, started); got.Text() != "" {
+	if got := NewReader("").Topic(session, started); got.Text() != "" {
 		t.Errorf("title = %q, want nothing", got.Text())
 	}
 }

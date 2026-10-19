@@ -150,7 +150,7 @@ session name — so copying it names the tab after whatever tool is running.
 name is `generated_title` in `summary.json` under the Grok home
 (`internal/grok/summary.go`). That name outranks the window title. A session
 that has not been named yet still falls through to the status line. The home is
-`GROK_CONFIG_DIR`, else `~/.grok`, plus any `HERDR_AUTO_TITLE_GROK_DIRS`.
+`GROK_CONFIG_DIR`, else `~/.grok`.
 
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
