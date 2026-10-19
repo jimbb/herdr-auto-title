@@ -14,8 +14,7 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 	case pi.Agent:
 		return withoutPiFrame(pane, title)
 	case grok.Agent:
-		// Grok's title is its live status line: a spinner and the running tool.
-		return "", false
+		return withoutGrokFrame(pane, title)
 	}
 
 	return title, true

@@ -121,10 +121,15 @@ Some agents use their title for something other than the work, so
 title is worth before it is read; a pane it declines is named by its session
 [one rung down](#the-session-transcript).
 
-Grok Build's title is its live status line: a braille spinner, the running
-tool, then the session name. Copying it would name the tab after whatever tool
-is running, so a Grok pane's title is declined outright, and the session's own
-name names it instead.
+Grok Build titles its terminal `<name> - grok` while idle and
+`<spinner> - <status> - <name> - grok` while it works, the status being
+`Thinking`, `Responding` or `Waiting for response…`. `withoutGrokFrame`
+(`internal/resolver/grok.go`) keeps only the name, so the tab does not change
+with every step Grok takes, and declines a title in any other shape. The title
+follows `/resume` at once, which Herdr's session id does not (see
+[the socket API](./herdr-socket-api.md)). Grok cuts a long name with `…`; when
+the summary below has the whole of that name, the title declines and the
+summary names the pane.
 
 Pi is read with one more step, because its title has a grammar of its own: Pi
 titles its terminal `π - <dir>` and, once `/name` has given the session a name,
@@ -154,8 +159,7 @@ null, this source declines, and every other rung works as it always did.
 
 `herdr integration install grok` reports a Grok Build session id the same way,
 and its name is `generated_title` in `summary.json` under the Grok home
-(`internal/grok/summary.go`), which is `GROK_CONFIG_DIR`, else `~/.grok`. A
-session Grok has not named yet names the tab after nothing but the agent.
+(`internal/grok/summary.go`), which is `GROK_CONFIG_DIR`, else `~/.grok`.
 
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
