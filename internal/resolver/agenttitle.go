@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"github.com/kryptamine/herdr-auto-title/internal/codex"
+	"github.com/kryptamine/herdr-auto-title/internal/grok"
 	"github.com/kryptamine/herdr-auto-title/internal/pi"
 	"github.com/kryptamine/herdr-auto-title/internal/state"
 )
@@ -21,6 +22,8 @@ func agentTitle(pane *state.PaneState, title string) (string, bool) {
 		}
 
 		return codex.ThreadName(title)
+	case grok.Agent:
+		return withoutGrokFrame(pane, title)
 	}
 
 	return title, true

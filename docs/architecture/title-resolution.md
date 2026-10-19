@@ -79,7 +79,6 @@ rather than by the order the sources happen to be listed in
 | Confidence | Source | File | Contributes |
 |---:|---|---|---|
 | 90 | Agent title | `agent.go` | Activity |
-| 85 | Stable session name | `transcript.go` | Activity |
 | 80 | Terminal title | `terminal.go` | Activity |
 | 75 | Session transcript | `transcript.go` | Activity |
 | 70 | Foreground process | `process.go` | Activity |
@@ -151,6 +150,16 @@ under the Codex home that assigns the key turns the check off, and the session
 files still name the tab. The file is scanned for the key rather than parsed: a
 false match only skips the check, and a miss would drop every session's name.
 
+Grok Build titles its terminal `<name> - grok` while idle and
+`<spinner> - <status> - <name> - grok` while it works, the status being
+`Thinking`, `Responding` or `Waiting for response…`. `withoutGrokFrame`
+(`internal/resolver/grok.go`) keeps only the name, so the tab does not change
+with every step Grok takes, and declines a title in any other shape. The title
+follows `/resume` at once, which Herdr's session id does not (see
+[the socket API](./herdr-socket-api.md)). Grok cuts a long name with `…`; when
+the summary below has the whole of that name, the title declines and the
+summary names the pane.
+
 Pi is read with one more step, because its title has a grammar of its own: Pi
 titles its terminal `π - <dir>` and, once `/name` has given the session a name,
 `π - <name> - <dir>`. The first says which program sits where, and the context
@@ -204,14 +213,9 @@ written to it once and an index past `MaxScan` read from its tail would lose
 every older session's. Codex compresses a rollout to `.jsonl.zst` only once
 it is a week old, which is not a session a pane still holds.
 
-Grok Build is the exception that sits above the terminal title. Its window
-title is the live status line — a braille spinner, the current tool, then the
-session name — so copying it names the tab after whatever tool is running.
-`herdr integration install grok` reports the session id the same way, and the
-name is `generated_title` in `summary.json` under the Grok home
-(`internal/grok/summary.go`). That name outranks the window title. A session
-that has not been named yet still falls through to the status line. The home is
-`GROK_CONFIG_DIR`, else `~/.grok`.
+`herdr integration install grok` reports a Grok Build session id the same way,
+and its name is `generated_title` in `summary.json` under the Grok home
+(`internal/grok/summary.go`), which is `GROK_CONFIG_DIR`, else `~/.grok`.
 
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
