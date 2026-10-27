@@ -1,6 +1,7 @@
 package grok
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -135,13 +136,22 @@ func writeSummary(t *testing.T, dir, title string) string {
 func writeSummaryIn(t *testing.T, home, dir, title string) {
 	t.Helper()
 
-	path := summaryPath(home, dir)
+	writeSummaryFile(t, summaryPath(home, dir), title)
+}
+
+func writeSummaryFile(t *testing.T, path, title string) {
+	t.Helper()
+
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
-	body := `{"generated_title":"` + title + `","cwd":"` + dir + `"}`
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+	body, err := json.Marshal(map[string]string{"generated_title": title})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(path, body, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

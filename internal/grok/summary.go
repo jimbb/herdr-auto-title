@@ -5,6 +5,7 @@ package grok
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -91,8 +92,8 @@ func (r *Reader) Retain(sessionIDs []string) {
 	r.sessions = kept
 }
 
-// layout is where Grok files a session: under the directory it was started in,
-// every separator percent-encoded, else under whichever project it moved to.
+// layout tries the percent-encoded starting directory before scanning for a
+// moved session or a project whose directory name Grok hashed.
 var layout = transcript.Layout{
 	Filed: func(root, dir, sessionID string) string {
 		return filepath.Join(root, "sessions", slugOf(dir), sessionID, summaryName)
@@ -102,9 +103,10 @@ var layout = transcript.Layout{
 	},
 }
 
-// slugOf is how Grok names a project directory: "/" and "\" become %2F.
+// slugOf percent-encodes a directory with spaces as %20, not the plus signs
+// query parameters use.
 func slugOf(dir string) string {
-	return strings.NewReplacer("/", "%2F", "\\", "%2F").Replace(filepath.Clean(dir))
+	return strings.ReplaceAll(url.QueryEscape(filepath.Clean(dir)), "+", "%20")
 }
 
 // read re-reads a summary whose mtime moved. Grok rewrites the file whole, so

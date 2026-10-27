@@ -217,6 +217,17 @@ it is a week old, which is not a session a pane still holds.
 and its name is `generated_title` in `summary.json` under the Grok home
 (`internal/grok/summary.go`), which is `GROK_CONFIG_DIR`, else `~/.grok`.
 
+The project directory under `sessions/` is the starting directory encoded as
+UTF-8 bytes with percent escapes. On Windows, Grok 1.0.70 stores the illustrative
+path `C:\work\demo` as `C%3A%5Cwork%5Cdemo`: the colon and backslashes are
+encoded too. Spaces become `%20`, plus signs `%2B`, and literal percent signs
+`%25`; punctuation and Unicode were checked through isolated ACP sessions.
+`slugOf` uses `url.QueryEscape` with its space marker replaced by `%20` so a
+direct lookup reaches the directory Grok wrote. At 254 and 255 encoded bytes
+the full name is kept; above 255, Grok uses a slug and hash and records the
+original path in `.cwd`. The scan fallback finds those summaries without
+depending on the hash algorithm, as it does sessions moved to another project.
+
 The transcript is then read from disk (`internal/claude/transcript.go`). Claude
 Code files its sessions under the configuration home `CLAUDE_CONFIG_DIR` names,
 and a user may have more than one — a second home for work under one client,
